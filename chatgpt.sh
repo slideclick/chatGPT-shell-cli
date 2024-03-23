@@ -1,5 +1,5 @@
 #!/bin/bash
-
+api_base="https://key.wenwen-ai.com/v1"
 GLOBIGNORE="*"
 
 CHAT_INIT_PROMPT="You are ChatGPT, a Large Language Model trained by OpenAI. You will be answering questions from users. You answer as concisely as possible for each response (e.g. don’t be verbose). If you are generating a list, do not have too many items. Keep the number of items short. Before each user prompt you will be given the chat history in Q&A form. Output your answer directly, with no labels in front. Do not start your answers with A or Anwser. You were trained on data up until 2021. Today's date is $(date +%m/%d/%Y)"
@@ -12,9 +12,9 @@ CHATGPT_CYAN_LABEL="\033[36mchatgpt \033[0m"
 PROCESSING_LABEL="\n\033[90mProcessing... \033[0m\033[0K\r"
 OVERWRITE_PROCESSING_LINE="             \033[0K\r"
 
-if [[ -z "$OPENAI_KEY" ]]; then
-	echo "You need to set your OPENAI_KEY to use this script"
-	echo "You can set it temporarily by running this on your terminal: export OPENAI_KEY=YOUR_KEY_HERE"
+if [[ -z "$OPENAI_API_KEY" ]]; then
+	echo "You need to set your OPENAI_API_KEY to use this script"
+	echo "You can set it temporarily by running this on your terminal: export OPENAI_API_KEY=YOUR_KEY_HERE"
 	exit 1
 fi
 
@@ -81,9 +81,9 @@ handle_error() {
 # request to openAI API models endpoint. Returns a list of models
 # takes no input parameters
 list_models() {
-	models_response=$(curl https://api.openai.com/v1/models \
+	models_response=$(curl ${api_base}/models \
 		-sS \
-		-H "Authorization: Bearer $OPENAI_KEY")
+		-H "Authorization: Bearer $OPENAI_API_KEY")
 	handle_error "$models_response"
 	models_data=$(echo $models_response | jq -r -C '.data[] | {id, owned_by, created}')
 	echo -e "$OVERWRITE_PROCESSING_LINE"
@@ -94,10 +94,10 @@ list_models() {
 request_to_completions() {
 	local prompt="$1"
 
-	curl https://api.openai.com/v1/completions \
+	curl ${api_base}/completions \
 		-sS \
 		-H 'Content-Type: application/json' \
-		-H "Authorization: Bearer $OPENAI_KEY" \
+		-H "Authorization: Bearer $OPENAI_API_KEY" \
 		-d '{
   			"model": "'"$MODEL"'",
   			"prompt": "'"$prompt"'",
@@ -110,10 +110,10 @@ request_to_completions() {
 # $1 should be the prompt
 request_to_image() {
 	local prompt="$1"
-	image_response=$(curl https://api.openai.com/v1/images/generations \
+	image_response=$(curl ${api_base}/images/generations \
 		-sS \
 		-H 'Content-Type: application/json' \
-		-H "Authorization: Bearer $OPENAI_KEY" \
+		-H "Authorization: Bearer $OPENAI_API_KEY" \
 		-d '{
     		"prompt": "'"${prompt#*image:}"'",
     		"n": 1,
@@ -127,10 +127,10 @@ request_to_chat() {
 	local message="$1"
 	escaped_system_prompt=$(escape "$SYSTEM_PROMPT")
 	
-	curl https://api.openai.com/v1/chat/completions \
+	curl ${api_base}/chat/completions \
 		-sS \
 		-H 'Content-Type: application/json' \
-		-H "Authorization: Bearer $OPENAI_KEY" \
+		-H "Authorization: Bearer $OPENAI_API_KEY" \
 		-d '{
             "model": "'"$MODEL"'",
             "messages": [
@@ -367,9 +367,9 @@ while $running; do
 	elif [[ "$prompt" == "models" ]]; then
 		list_models
 	elif [[ "$prompt" =~ ^model: ]]; then
-		models_response=$(curl https://api.openai.com/v1/models \
+		models_response=$(curl ${api_base}/models \
 			-sS \
-			-H "Authorization: Bearer $OPENAI_KEY")
+			-H "Authorization: Bearer $OPENAI_API_KEY")
 		handle_error "$models_response"
 		model_data=$(echo $models_response | jq -r -C '.data[] | select(.id=="'"${prompt#*model:}"'")')
 		echo -e "$OVERWRITE_PROCESSING_LINE"
